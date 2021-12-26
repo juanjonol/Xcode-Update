@@ -30,7 +30,7 @@ This script only installs the newest Xcode version and deletes the oldest one. A
 
 ### How do I keep this script from deleting an Xcode version?
 
-This script uses `xcodes list` to search for Xcode versions, so anything that hides the Xcode version from `xcodes` will work. For example, the Xcode version could be placed on an "Archived" subfolder.
+This script uses `xcodes list` to search for Xcode versions, so anything that hides the Xcode version from `xcodes` will work. For example, the Xcode version could be placed on an "Archived" subfolder. You can also use the `--skip-delete` parameter to avoid deleting the oldest Xcode version when executing the script. 
 
 ### How do I change the directory where Xcode versions are installed?
 

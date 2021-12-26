@@ -29,6 +29,7 @@ def parse_args():
 	# Arguments
 	root_parser.add_argument('-v', '--version', action='version', version='1.0.0')
 	root_parser.add_argument('-n', '--non-interactive', action='store_false', dest='interactive', help='Installs and deletes Xcode versions without asking for permission first')
+	root_parser.add_argument('-s', '--skip-delete', action='store_false', dest='delete', help="Don't delete the oldest Xcode version")
 	return root_parser.parse_args()
 
 
@@ -44,11 +45,13 @@ def main():
 	verify_permissions()
 	if args.interactive:
 		install_latest_xcode(dry_run=True)
-		delete_xcode(dry_run=True)
+		if args.delete:
+			delete_xcode(dry_run=True)
 		update_symlinks(dry_run=True)
 		ask_for_confirmation("Continue updating? (Y/n): ")
 	install_latest_xcode(dry_run=False)
-	delete_xcode(dry_run=False)
+	if args.delete:
+		delete_xcode(dry_run=False)
 	update_symlinks(dry_run=False)
 	
 	
