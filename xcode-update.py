@@ -13,9 +13,9 @@ from pathlib import Path
 import os
 
 
-# Symlink to the latest Xcode release version.
+# Link to the latest Xcode release version.
 XCODE_RELEASE = Path(f'/Applications/Xcode.app')
-# Symlink to the latest Xcode prerelease version.
+# Link to the latest Xcode prerelease version.
 XCODE_BETA = Path(f'/Applications/Xcode-beta.app')
 # String that Xcodes adds to a version to indicate it's already installed. Note the space at the beginning.
 XCODES_INSTALLED_MAGIC_STRING = ' (Installed)'
@@ -47,12 +47,12 @@ def main():
 		install_latest_xcode(dry_run=True)
 		if args.delete:
 			delete_xcode(dry_run=True)
-		update_symlinks(dry_run=True)
+		update_links(dry_run=True)
 		ask_for_confirmation("Continue updating? (Y/n): ")
 	install_latest_xcode(dry_run=False)
 	if args.delete:
 		delete_xcode(dry_run=False)
-	update_symlinks(dry_run=False)
+	update_links(dry_run=False)
 	
 	
 def verify_permissions():
@@ -93,8 +93,8 @@ def delete_xcode(dry_run: bool):
 		shutil.rmtree(str(xcode_version_to_delete))
 		
 		
-def update_symlinks(dry_run: bool):
-	"""Updates the symlinks to the latest Xcode version."""
+def update_links(dry_run: bool):
+	"""Updates the links to the latest Xcode version."""
 
 	latest_version = latest_xcode_version()
 	current_beta = None
@@ -105,8 +105,7 @@ def update_symlinks(dry_run: bool):
 		print(f'- {XCODE_BETA} will stop linking to {current_beta} and start pointing to Xcode {latest_version}.')
 	if not dry_run:
 		latest_version_path = path_for_xcode_version(latest_version)
-		XCODE_BETA.unlink()
-		XCODE_BETA.symlink_to(latest_version_path)
+		make_alias(latest_version_path, XCODE_BETA)
 		
 	# XCODE_RELEASE is updated:
 	# - 99% of the times to the newest release version (the current_beta that's about to be replaced), if that beta points to a release version
@@ -117,19 +116,16 @@ def update_symlinks(dry_run: bool):
 		if is_release_version(current_beta):
 			print(f'- {XCODE_RELEASE} will stop linking to {current_release} and start pointing to {current_beta}.')
 			if not dry_run:
-				XCODE_RELEASE.unlink()
-				XCODE_RELEASE.symlink_to(current_beta)
+				make_alias(current_beta, XCODE_RELEASE)
 	elif current_beta:
 		print(f'- NO RELEASE VERSION DETECTED: {XCODE_RELEASE} will be created pointing to {current_beta}.')
 		if not dry_run:
-			XCODE_RELEASE.unlink()
-			XCODE_RELEASE.symlink_to(current_beta)
+			make_alias(current_beta, XCODE_RELEASE)
 	else:
 		print(f'- NO RELEASE VERSION DETECTED: {XCODE_RELEASE} will be created pointing to {latest_version}.')
 		if not dry_run:
 			latest_version_path = path_for_xcode_version(latest_version)
-			XCODE_RELEASE.unlink()
-			XCODE_RELEASE.symlink_to(latest_version_path)
+			make_alias(latest_version_path, XCODE_RELEASE)
 		
 		
 def ask_for_confirmation(prompt: str):
@@ -182,6 +178,30 @@ def path_for_xcode_version(searched_version: str) -> Path:
 		if searched_version in version:
 			return version.split("\t")[1]
 	return None
+	
+	
+def make_alias(source: Path, destination: Path):
+	"""Creates a Finder alias and a symlink to `source` on the `destination` Path."""
+	
+	destination.unlink(missing_ok=True) # This must be done first to avoid problems with `destination.is_dir()` returning true with this symlink
+	# osascript doesn't allow to set the name of the alias on the same call, so we must only use the parent folder
+	# and rename it later
+	if destination.is_dir():
+		destination_folder = destination
+	else: # If it's a file that doesn't exists yet
+		destination_folder = destination.parent
+	if destination_folder == source.parent:
+		raise AssertionError("Currently we don't support Finder alias on the same folder (macOS changes its name)")
+	subprocess.run(['osascript', '-e', f'tell application "Finder" to make alias file to (POSIX file "{str(source)}") at (POSIX file "{str(destination_folder)}")'], check=True, stdout=subprocess.DEVNULL)
+	temporal_path = destination_folder / source.name
+	if source.is_dir(): # macOS delete the ".app" from app alias it creates by default...
+		temporal_path = temporal_path.with_suffix('')
+	if destination.is_dir():
+		destination = destination / temporal_path.name # If we didn't set a name, we add the source's name
+	temporal_path.rename(destination.with_suffix('.alias')) # We add this suffix to distinguish it for the symlink.
+	# To be able to access Xcode from Terminal, we also need to keep a symlink.
+	# TODO: If `xcodes` sets  the Command Line Tools, maybe this isn't needed
+	destination.symlink_to(source)
 
 
 if __name__ == '__main__':
