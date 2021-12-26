@@ -105,17 +105,28 @@ def update_symlinks(dry_run: bool):
 		XCODE_BETA.unlink()
 		XCODE_BETA.symlink_to(latest_version_path)
 		
-	# Xcode release versions are only updated when the current beta (that's about to be replaced) points to a release version
-	if is_release_version(current_beta):
-		if not XCODE_RELEASE.exists():
-			print(f'- {XCODE_RELEASE} will be created pointing to {current_beta}.')
-		else:
-			current_release = XCODE_RELEASE.resolve()
+	# XCODE_RELEASE is updated:
+	# - 99% of the times to the newest release version (the current_beta that's about to be replaced), if that beta points to a release version
+	# - If no XCODE_RELEASE version exists, to the current_beta (a prerelease version, but at least different from XCODE_BETA)
+	# - If no current_beta exists, to the same version as XCODE_BETA (the only Xcode version detected).
+	if XCODE_RELEASE.exists():
+		current_release = XCODE_RELEASE.resolve()
+		if is_release_version(current_beta):
 			print(f'- {XCODE_RELEASE} will stop linking to {current_release} and start pointing to {current_beta}.')
-
-		if not dry_run: # TODO: Refactor this to create XCODE_RELEASE even if current_beta doesn't exist
+			if not dry_run:
+				XCODE_RELEASE.unlink()
+				XCODE_RELEASE.symlink_to(current_beta)
+	elif current_beta:
+		print(f'- NO RELEASE VERSION DETECTED: {XCODE_RELEASE} will be created pointing to {current_beta}.')
+		if not dry_run:
 			XCODE_RELEASE.unlink()
 			XCODE_RELEASE.symlink_to(current_beta)
+	else:
+		print(f'- NO RELEASE VERSION DETECTED: {XCODE_RELEASE} will be created pointing to {latest_version}.')
+		if not dry_run:
+			latest_version_path = path_for_xcode_version(latest_version)
+			XCODE_RELEASE.unlink()
+			XCODE_RELEASE.symlink_to(latest_version_path)
 		
 		
 def ask_for_confirmation(prompt: str):
