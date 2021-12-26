@@ -10,6 +10,7 @@ from shutil import which
 import argparse
 import subprocess
 from pathlib import Path
+import os
 
 
 # Symlink to the latest Xcode release version.
@@ -40,6 +41,7 @@ def main():
 		print("WARNING: aria2 is not installed. This makes downloading Xcode versions significantly slower. You can install it with `brew install aria2`.")
 
 	args = parse_args()
+	verify_permissions()
 	if args.interactive:
 		install_latest_xcode(dry_run=True)
 		delete_xcode(dry_run=True)
@@ -48,6 +50,16 @@ def main():
 	install_latest_xcode(dry_run=False)
 	delete_xcode(dry_run=False)
 	update_symlinks(dry_run=False)
+	
+	
+def verify_permissions():
+	"""Verify that the current user has write access to Xcode's directory."""
+	
+	xcode_directory = os.environ['XCODES_DIRECTORY']
+	if not xcode_directory:
+		xcode_directory = '/Applications'
+	if not os.access(xcode_directory, os.R_OK | os.W_OK):
+		raise PermissionError(f"The current user doesn't have permissions to install Xcode on {xcode_directory}")
 	
 	
 def install_latest_xcode(dry_run: bool):

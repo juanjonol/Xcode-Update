@@ -32,6 +32,10 @@ This script only installs the newest Xcode version and deletes the oldest one. A
 
 This script uses `xcodes list` to search for Xcode versions, so anything that hides the Xcode version from `xcodes` will work. For example, the Xcode version could be placed on an "Archived" subfolder.
 
+### How do I change the directory where Xcode versions are installed?
+
+With the environment variable [`XCODES_DIRECTORY`](https://github.com/RobotsAndPencils/xcodes/pull/126).
+
 ## Support
 
 If you have a problem, create an [issue][1]. Pull request are welcome, but keep in mind that this script is heavily tailored to how I want ot to work, so I don't intent to change its behaviour too much (unless I'm convinced otherwise).
