@@ -6,7 +6,7 @@ This is a wrapper around `xcodes` (https://github.com/RobotsAndPencils/xcodes).
 """
 
 import sys
-from shutil import which
+import shutil
 import argparse
 import subprocess
 from pathlib import Path
@@ -35,9 +35,9 @@ def parse_args():
 def main():
 	if not sys.platform == 'darwin':
 		raise NotImplementedError("This program only works on macOS")
-	if which("xcodes") is None:
+	if shutil.which("xcodes") is None:
 		raise AssertionError("xcodes isn't installed. You must install xcodes from https://github.com/RobotsAndPencils/xcodes")
-	if which("aria2c") is None:
+	if shutil.which("aria2c") is None:
 		print("WARNING: aria2 is not installed. This makes downloading Xcode versions significantly slower. You can install it with `brew install aria2`.")
 
 	args = parse_args()
@@ -73,8 +73,7 @@ def install_latest_xcode(dry_run: bool):
 	print(f'- Xcode version {latest_version} will be installed.')
 	
 	if not dry_run:
-		print("Installation of Xcode versions is not implemented yet")
-		#subprocess.run(['xcodes', 'install', '--latest-prerelease'], check=True)
+		subprocess.run(['xcodes', 'install', f'{latest_version}'], check=True)
 
 
 def delete_xcode(dry_run: bool):
@@ -88,8 +87,7 @@ def delete_xcode(dry_run: bool):
 		print(f'- {xcode_version_to_delete} will be deleted.')
 	
 	if not dry_run:
-		print(f'Deleting {str(xcode_version_to_delete)}...')
-		print("Deletion of Xcode versions is not implemented yet")
+		shutil.rmtree(str(xcode_version_to_delete))
 		
 		
 def update_symlinks(dry_run: bool):
@@ -102,6 +100,11 @@ def update_symlinks(dry_run: bool):
 	else:
 		current_beta = XCODE_BETA.resolve()
 		print(f'- {XCODE_BETA} will stop linking to {current_beta} and start pointing to Xcode {latest_version}.')
+	if not dry_run:
+		latest_version_path = path_for_xcode_version(latest_version)
+		XCODE_BETA.unlink()
+		XCODE_BETA.symlink_to(latest_version_path)
+		
 	# Xcode release versions are only updated when the current beta (that's about to be replaced) points to a release version
 	if is_release_version(current_beta):
 		if not XCODE_RELEASE.exists():
@@ -110,8 +113,9 @@ def update_symlinks(dry_run: bool):
 			current_release = XCODE_RELEASE.resolve()
 			print(f'- {XCODE_RELEASE} will stop linking to {current_release} and start pointing to {current_beta}.')
 
-	if not dry_run:
-		print("The update of the symlinks is not implemented yet")
+		if not dry_run: # TODO: Refactor this to create XCODE_RELEASE even if current_beta doesn't exist
+			XCODE_RELEASE.unlink()
+			XCODE_RELEASE.symlink_to(current_beta)
 		
 		
 def ask_for_confirmation(prompt: str):
@@ -154,6 +158,16 @@ def oldest_xcode_version(include_releases: bool) -> Path:
 		if include_releases | (XCODES_BETA_MAGIC_STRING in version):
 			return version.split("\t")[1]
 	return None # There could be no previous Xcode versions
+	
+
+def path_for_xcode_version(searched_version: str) -> Path:
+	"""Returns the path to the provided Xcode version, if found."""
+	
+	installed_versions = subprocess.run(['xcodes', 'installed'], check=True, stdout=subprocess.PIPE).stdout.decode('utf-8')
+	for version in installed_versions.split("\n"):
+		if searched_version in version:
+			return version.split("\t")[1]
+	return None
 
 
 if __name__ == '__main__':
