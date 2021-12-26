@@ -42,12 +42,12 @@ def main():
 	args = parse_args()
 	if args.interactive:
 		install_latest_xcode(dry_run=True)
-		update_symlinks(dry_run=True)
 		delete_xcode(dry_run=True)
+		update_symlinks(dry_run=True)
 		ask_for_confirmation("Continue updating? (Y/n): ")
 	install_latest_xcode(dry_run=False)
-	update_symlinks(dry_run=False)
 	delete_xcode(dry_run=False)
+	update_symlinks(dry_run=False)
 	
 	
 def install_latest_xcode(dry_run: bool):
@@ -65,6 +65,21 @@ def install_latest_xcode(dry_run: bool):
 		#subprocess.run(['xcodes', 'install', '--latest-prerelease'], check=True)
 
 
+def delete_xcode(dry_run: bool):
+	"""Deletes the oldest Xcode version."""
+
+	# Xcode release versions are only updated when the current beta (that's about to be replaced) points to a release version
+	current_beta = XCODE_BETA.resolve()
+	should_delete_release_version = is_release_version(current_beta)
+	xcode_version_to_delete = oldest_xcode_version(include_releases=should_delete_release_version)
+	if xcode_version_to_delete:
+		print(f'- {xcode_version_to_delete} will be deleted.')
+	
+	if not dry_run:
+		print(f'Deleting {str(xcode_version_to_delete)}...')
+		print("Deletion of Xcode versions is not implemented yet")
+		
+		
 def update_symlinks(dry_run: bool):
 	"""Updates the symlinks to the latest Xcode version."""
 
@@ -85,21 +100,6 @@ def update_symlinks(dry_run: bool):
 
 	if not dry_run:
 		print("The update of the symlinks is not implemented yet")
-
-
-def delete_xcode(dry_run: bool):
-	"""Deletes the oldest Xcode version."""
-
-	# Xcode release versions are only updated when the current beta (that's about to be replaced) points to a release version
-	current_beta = XCODE_BETA.resolve()
-	should_delete_release_version = is_release_version(current_beta)
-	xcode_version_to_delete = oldest_xcode_version(include_releases=should_delete_release_version)
-	if xcode_version_to_delete:
-		print(f'- {xcode_version_to_delete} will be deleted.')
-	
-	if not dry_run:
-		print(f'Deleting {str(xcode_version_to_delete)}...')
-		print("Deletion of Xcode versions is not implemented yet")
 		
 		
 def ask_for_confirmation(prompt: str):
