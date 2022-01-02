@@ -175,7 +175,7 @@ def oldest_xcode_version(include_releases: bool) -> Path:
 	installed_versions = subprocess.run(['xcodes', 'installed'], check=True, stdout=subprocess.PIPE).stdout.decode('utf-8')
 	for version in installed_versions.split("\n"):
 		if include_releases | (XCODES_BETA_MAGIC_STRING in version):
-			return version.split("\t")[1]
+			return Path(version.split("\t")[1])
 	return None # There could be no previous Xcode versions
 	
 
@@ -185,7 +185,7 @@ def path_for_xcode_version(searched_version: str) -> Path:
 	installed_versions = subprocess.run(['xcodes', 'installed'], check=True, stdout=subprocess.PIPE).stdout.decode('utf-8')
 	for version in installed_versions.split("\n"):
 		if searched_version in version:
-			return version.split("\t")[1]
+			return Path(version.split("\t")[1])
 	return None
 	
 	
