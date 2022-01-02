@@ -143,7 +143,10 @@ def ask_for_confirmation(prompt: str):
 def latest_xcode_version() -> str:
 	"""Returns the latest Xcode version available"""
 	
-	all_versions = subprocess.run(['xcodes', 'list'], check=True, stdout=subprocess.PIPE).stdout.decode('utf-8')
+	try:
+		all_versions = subprocess.run(['xcodes', 'list'], check=True, timeout=10, stdout=subprocess.PIPE).stdout.decode('utf-8')
+	except subprocess.TimeoutExpired:
+		raise AssertionError('Calling xcodes has failed. Please use "xcodes list" to ensure that it works (maybe the Apple ID is not set?)') from None # https://stackoverflow.com/a/52725410
 	return all_versions.split("\n")[-2] # The last string (-1 on the array) is always empty
 	
 	
