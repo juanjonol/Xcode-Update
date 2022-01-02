@@ -68,9 +68,8 @@ def verify_permissions():
 def install_latest_xcode(dry_run: bool):
 	"""Install the latest Xcode version, if it isn't already installed."""
 	
-	latest_version = latest_xcode_version()
-	if XCODES_INSTALLED_MAGIC_STRING in latest_version:
-		latest_version = latest_version.replace(XCODES_INSTALLED_MAGIC_STRING, '')
+	latest_version, is_installed = latest_xcode_version()
+	if is_installed:
 		print(f'{latest_version} is already installed. Nothing to do.')
 		exit()
 	print(f'- Xcode version {latest_version} will be installed.')
@@ -96,7 +95,7 @@ def delete_xcode(dry_run: bool):
 def update_links(dry_run: bool):
 	"""Updates the links to the latest Xcode version."""
 
-	latest_version = latest_xcode_version()
+	latest_version, latest_version_is_installed = latest_xcode_version()
 	current_beta = None
 	if not XCODE_BETA.exists():
 		print(f'- {XCODE_BETA} will be created pointing to Xcode {latest_version}.')
@@ -104,6 +103,8 @@ def update_links(dry_run: bool):
 		current_beta = XCODE_BETA.resolve()
 		print(f'- {XCODE_BETA} will stop linking to {current_beta} and start pointing to Xcode {latest_version}.')
 	if not dry_run:
+		if not latest_version_is_installed:
+			raise AssertionError(f"Xcode {latest_version} isn't installed yet.")
 		latest_version_path = path_for_xcode_version(latest_version)
 		make_alias(latest_version_path, XCODE_BETA)
 		
@@ -140,14 +141,19 @@ def ask_for_confirmation(prompt: str):
 		exit()
 	
 	
-def latest_xcode_version() -> str:
-	"""Returns the latest Xcode version available"""
+def latest_xcode_version() -> (str, bool):
+	"""Returns the latest Xcode version available, and if it's already installed"""
 	
 	try:
 		all_versions = subprocess.run(['xcodes', 'list'], check=True, timeout=10, stdout=subprocess.PIPE).stdout.decode('utf-8')
 	except subprocess.TimeoutExpired:
 		raise AssertionError('Calling xcodes has failed. Please use "xcodes list" to ensure that it works (maybe the Apple ID is not set?)') from None # https://stackoverflow.com/a/52725410
-	return all_versions.split("\n")[-2] # The last string (-1 on the array) is always empty
+	latest_version = all_versions.split("\n")[-2] # The last string (-1 on the array) is always empty
+	is_installed = False
+	if XCODES_INSTALLED_MAGIC_STRING in latest_version:
+		latest_version = latest_version.replace(XCODES_INSTALLED_MAGIC_STRING, '')
+		is_installed = True
+	return latest_version, is_installed
 	
 	
 def is_release_version(path: Path) -> bool:
