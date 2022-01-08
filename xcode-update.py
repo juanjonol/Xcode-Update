@@ -198,33 +198,35 @@ def make_alias(source: Path, destination: Path):
 		destination = destination / source.name
 	if source == destination:
 		raise AssertionError(f"The destination path for the alias ({destination}) is the same as its source (it would override it)")
-	applescript = f"""
+	applescript = """
 	use framework "Foundation"
 	set nil to missing value
+	set source to "%s"
+	set destination to "%s"
 	
 	# Get source's URL
-	set sourceURL to current application's NSURL's fileURLWithPath:"{str(source)}"
-	set {{success, resolveError}} to sourceURL's checkResourceIsReachableAndReturnError:(reference)
+	set sourceURL to current application's NSURL's fileURLWithPath:source
+	set {success, resolveError} to sourceURL's checkResourceIsReachableAndReturnError:(reference)
 	if not success or resolveError is not missing value then
 		error resolveError's localizedDescription as text
 	end if
 	
 	# Get source's bookmark (alias)
 	set options to current application's NSURLBookmarkCreationSuitableForBookmarkFile
-	set {{sourceBookmark, resolveError}} to sourceURL's bookmarkDataWithOptions:options includingResourceValuesForKeys:nil relativeToURL:nil |error|:(reference)
+	set {sourceBookmark, resolveError} to sourceURL's bookmarkDataWithOptions:options includingResourceValuesForKeys:nil relativeToURL:nil |error|:(reference)
 	if resolveError is not missing value then
 		error resolveError's localizedDescription as text
 	end if
 
 	# Make bookmark (alias)
-	set destinationURL to current application's NSURL's fileURLWithPath:"{str(destination)}"
-	set {{success, resolveError}} to current application's NSURL's writeBookmarkData:sourceBookmark toURL:destinationURL options:options |error|:(reference)
+	set destinationURL to current application's NSURL's fileURLWithPath:destination
+	set {success, resolveError} to current application's NSURL's writeBookmarkData:sourceBookmark toURL:destinationURL options:options |error|:(reference)
 	if not success or resolveError is not missing value then
 		error resolveError's localizedDescription as text
 	end if
 	
-	log "Successfully created alias for {str(source)} at str(destination)"
-	"""
+	log "Successfully created alias for " & source & " at " & destination
+	"""%(str(source), str(destination))
 	subprocess.run(['osascript', '-e', applescript], check=True)
 	destination.rename(destination.with_suffix('.alias')) # We add this suffix to distinguish it for the symlink.
 	# To be able to access Xcode from Terminal, we also need to keep a symlink.
