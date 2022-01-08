@@ -193,21 +193,40 @@ def make_alias(source: Path, destination: Path):
 	"""Creates a Finder alias and a symlink to `source` on the `destination` Path."""
 	
 	destination.unlink(missing_ok=True) # This must be done first to avoid problems with `destination.is_dir()` returning true with this symlink
-	# osascript doesn't allow to set the name of the alias on the same call, so we must only use the parent folder
-	# and rename it later
+	# If we didn't set a name for the alias, we use the source's name
 	if destination.is_dir():
-		destination_folder = destination
-	else: # If it's a file that doesn't exists yet
-		destination_folder = destination.parent
-	if destination_folder == source.parent:
-		raise AssertionError("Currently we don't support Finder alias on the same folder (macOS changes its name)")
-	subprocess.run(['osascript', '-e', f'tell application "Finder" to make alias file to (POSIX file "{str(source)}") at (POSIX file "{str(destination_folder)}")'], check=True, stdout=subprocess.DEVNULL)
-	temporal_path = destination_folder / source.name
-	if source.is_dir(): # macOS delete the ".app" from app alias it creates by default...
-		temporal_path = temporal_path.with_suffix('')
-	if destination.is_dir():
-		destination = destination / temporal_path.name # If we didn't set a name, we add the source's name
-	temporal_path.rename(destination.with_suffix('.alias')) # We add this suffix to distinguish it for the symlink.
+		destination = destination / source.name
+	if source == destination:
+		raise AssertionError(f"The destination path for the alias ({destination}) is the same as its source (it would override it)")
+	applescript = f"""
+	use framework "Foundation"
+	set nil to missing value
+	
+	# Get source's URL
+	set sourceURL to current application's NSURL's fileURLWithPath:"{str(source)}"
+	set {{success, resolveError}} to sourceURL's checkResourceIsReachableAndReturnError:(reference)
+	if not success or resolveError is not missing value then
+		error resolveError's localizedDescription as text
+	end if
+	
+	# Get source's bookmark (alias)
+	set options to current application's NSURLBookmarkCreationSuitableForBookmarkFile
+	set {{sourceBookmark, resolveError}} to sourceURL's bookmarkDataWithOptions:options includingResourceValuesForKeys:nil relativeToURL:nil |error|:(reference)
+	if resolveError is not missing value then
+		error resolveError's localizedDescription as text
+	end if
+
+	# Make bookmark (alias)
+	set destinationURL to current application's NSURL's fileURLWithPath:"{str(destination)}"
+	set {{success, resolveError}} to current application's NSURL's writeBookmarkData:sourceBookmark toURL:destinationURL options:options |error|:(reference)
+	if not success or resolveError is not missing value then
+		error resolveError's localizedDescription as text
+	end if
+	
+	log "Successfully created alias for {str(source)} at str(destination)"
+	"""
+	subprocess.run(['osascript', '-e', applescript], check=True)
+	destination.rename(destination.with_suffix('.alias')) # We add this suffix to distinguish it for the symlink.
 	# To be able to access Xcode from Terminal, we also need to keep a symlink.
 	# TODO: If `xcodes` sets  the Command Line Tools, maybe this isn't needed
 	destination.symlink_to(source)
