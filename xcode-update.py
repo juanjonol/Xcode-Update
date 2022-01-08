@@ -58,7 +58,7 @@ def main():
 def verify_permissions():
 	"""Verify that the current user has write access to Xcode's directory."""
 	
-	xcode_directory = os.environ['XCODES_DIRECTORY']
+	xcode_directory = os.environ.get('XCODES_DIRECTORY')
 	if not xcode_directory:
 		xcode_directory = '/Applications'
 	if not os.access(xcode_directory, os.R_OK | os.W_OK):
