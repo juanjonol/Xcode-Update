@@ -77,7 +77,7 @@ def install_latest_xcode(dry_run: bool):
 	print(f'- Xcode version {latest_version} will be installed.')
 	
 	if not dry_run:
-		subprocess.run(['xcodes', 'install', f'{latest_version}'], check=True)
+		subprocess.run(['xcodes', 'install', f'{latest_version}', '--no-superuser'], check=True)
 
 
 def delete_xcode(dry_run: bool):
