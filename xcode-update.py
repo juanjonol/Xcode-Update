@@ -104,11 +104,11 @@ def update_links(dry_run: bool):
 	current_beta = None
 	xcode_beta_path = XCODE_SYMLINK_DIRECTORY / XCODE_BETA
 	xcode_release_path = XCODE_SYMLINK_DIRECTORY / XCODE_RELEASE
-	if not xcode_beta_path.exists():
-		print(f'- {xcode_beta_path} will be created pointing to Xcode {latest_version}.')
-	else:
+	if xcode_beta_path.exists() or xcode_beta_path.is_symlink():
 		current_beta = xcode_beta_path.resolve()
 		print(f'- {xcode_beta_path} will stop linking to {current_beta} and start pointing to Xcode {latest_version}.')
+	else:
+		print(f'- {xcode_beta_path} will be created pointing to Xcode {latest_version}.')
 	if not dry_run:
 		if not latest_version_is_installed:
 			raise AssertionError(f"Xcode {latest_version} isn't installed yet.")
@@ -119,7 +119,7 @@ def update_links(dry_run: bool):
 	# - 99% of the times to the newest release version (the current_beta that's about to be replaced), if that beta points to a release version
 	# - If no XCODE_RELEASE version exists, to the current_beta (a prerelease version, but at least different from XCODE_BETA)
 	# - If no current_beta exists, to the same version as XCODE_BETA (the only Xcode version detected).
-	if xcode_release_path.exists():
+	if xcode_release_path.exists() or xcode_release_path.is_symlink():
 		current_release = xcode_release_path.resolve()
 		if is_release_version(current_beta):
 			print(f'- {xcode_release_path} will stop linking to {current_release} and start pointing to {current_beta}.')
