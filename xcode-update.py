@@ -113,7 +113,7 @@ def update_links(dry_run: bool):
 		if not latest_version_is_installed:
 			raise AssertionError(f"Xcode {latest_version} isn't installed yet.")
 		latest_version_path = path_for_xcode_version(latest_version)
-		make_alias(latest_version_path, xcode_beta_path)
+		make_alias(latest_version_path, XCODE_BETA)
 		
 	# XCODE_RELEASE is updated:
 	# - 99% of the times to the newest release version (the current_beta that's about to be replaced), if that beta points to a release version
@@ -124,16 +124,16 @@ def update_links(dry_run: bool):
 		if is_release_version(current_beta):
 			print(f'- {xcode_release_path} will stop linking to {current_release} and start pointing to {current_beta}.')
 			if not dry_run:
-				make_alias(current_beta, xcode_release_path)
+				make_alias(current_beta, XCODE_RELEASE)
 	elif current_beta:
 		print(f'- NO RELEASE VERSION DETECTED: {xcode_release_path} will be created pointing to {current_beta}.')
 		if not dry_run:
-			make_alias(current_beta, xcode_release_path)
+			make_alias(current_beta, XCODE_RELEASE)
 	else:
 		print(f'- NO RELEASE VERSION DETECTED: {xcode_release_path} will be created pointing to {latest_version}.')
 		if not dry_run:
 			latest_version_path = path_for_xcode_version(latest_version)
-			make_alias(latest_version_path, xcode_release_path)
+			make_alias(latest_version_path, XCODE_RELEASE)
 		
 		
 def ask_for_confirmation(prompt: str):
