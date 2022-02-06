@@ -13,10 +13,12 @@ from pathlib import Path
 import os
 
 
-# Link to the latest Xcode release version.
-XCODE_RELEASE = Path(f'/Applications/Xcode.app')
-# Link to the latest Xcode prerelease version.
-XCODE_BETA = Path(f'/Applications/Xcode-beta.app')
+# Directory to contain symlinks to the latest Xcode versions.
+XCODE_SYMLINK_DIRECTORY = Path('/Applications')
+# Name for the latest Xcode release version.
+XCODE_RELEASE = 'Xcode.app'
+# Name for the latest Xcode prerelease version.
+XCODE_BETA = 'Xcode-beta.app'
 # String that Xcodes adds to a version to indicate it's already installed. Note the space at the beginning.
 XCODES_INSTALLED_MAGIC_STRING = ' (Installed)'
 # String that Xcodes adds to a version to indicate it's a Beta version.
@@ -82,7 +84,8 @@ def delete_xcode(dry_run: bool):
 	"""Deletes the oldest Xcode version."""
 
 	# Xcode release versions are only updated when the current beta (that's about to be replaced) points to a release version
-	current_beta = XCODE_BETA.resolve()
+	xcode_beta_path = XCODE_SYMLINK_DIRECTORY / XCODE_BETA
+	current_beta = xcode_beta_path.resolve()
 	should_delete_release_version = is_release_version(current_beta)
 	xcode_version_to_delete = oldest_xcode_version(include_releases=should_delete_release_version)
 	if xcode_version_to_delete:
@@ -97,36 +100,38 @@ def update_links(dry_run: bool):
 
 	latest_version, latest_version_is_installed = latest_xcode_version()
 	current_beta = None
-	if not XCODE_BETA.exists():
-		print(f'- {XCODE_BETA} will be created pointing to Xcode {latest_version}.')
+	xcode_beta_path = XCODE_SYMLINK_DIRECTORY / XCODE_BETA
+	xcode_release_path = XCODE_SYMLINK_DIRECTORY / XCODE_RELEASE
+	if not xcode_beta_path.exists():
+		print(f'- {xcode_beta_path} will be created pointing to Xcode {latest_version}.')
 	else:
-		current_beta = XCODE_BETA.resolve()
-		print(f'- {XCODE_BETA} will stop linking to {current_beta} and start pointing to Xcode {latest_version}.')
+		current_beta = xcode_beta_path.resolve()
+		print(f'- {xcode_beta_path} will stop linking to {current_beta} and start pointing to Xcode {latest_version}.')
 	if not dry_run:
 		if not latest_version_is_installed:
 			raise AssertionError(f"Xcode {latest_version} isn't installed yet.")
 		latest_version_path = path_for_xcode_version(latest_version)
-		make_alias(latest_version_path, XCODE_BETA)
+		make_alias(latest_version_path, xcode_beta_path)
 		
 	# XCODE_RELEASE is updated:
 	# - 99% of the times to the newest release version (the current_beta that's about to be replaced), if that beta points to a release version
 	# - If no XCODE_RELEASE version exists, to the current_beta (a prerelease version, but at least different from XCODE_BETA)
 	# - If no current_beta exists, to the same version as XCODE_BETA (the only Xcode version detected).
-	if XCODE_RELEASE.exists():
-		current_release = XCODE_RELEASE.resolve()
+	if xcode_release_path.exists():
+		current_release = xcode_release_path.resolve()
 		if is_release_version(current_beta):
-			print(f'- {XCODE_RELEASE} will stop linking to {current_release} and start pointing to {current_beta}.')
+			print(f'- {xcode_release_path} will stop linking to {current_release} and start pointing to {current_beta}.')
 			if not dry_run:
-				make_alias(current_beta, XCODE_RELEASE)
+				make_alias(current_beta, xcode_release_path)
 	elif current_beta:
-		print(f'- NO RELEASE VERSION DETECTED: {XCODE_RELEASE} will be created pointing to {current_beta}.')
+		print(f'- NO RELEASE VERSION DETECTED: {xcode_release_path} will be created pointing to {current_beta}.')
 		if not dry_run:
-			make_alias(current_beta, XCODE_RELEASE)
+			make_alias(current_beta, xcode_release_path)
 	else:
-		print(f'- NO RELEASE VERSION DETECTED: {XCODE_RELEASE} will be created pointing to {latest_version}.')
+		print(f'- NO RELEASE VERSION DETECTED: {xcode_release_path} will be created pointing to {latest_version}.')
 		if not dry_run:
 			latest_version_path = path_for_xcode_version(latest_version)
-			make_alias(latest_version_path, XCODE_RELEASE)
+			make_alias(latest_version_path, xcode_release_path)
 		
 		
 def ask_for_confirmation(prompt: str):
@@ -189,15 +194,17 @@ def path_for_xcode_version(searched_version: str) -> Path:
 	return None
 	
 	
-def make_alias(source: Path, destination: Path):
-	"""Creates a Finder alias and a symlink to `source` on the `destination` Path."""
+def make_alias(source: Path, name: str):
+	"""
+	Creates a Finder alias and a symlink to `source` with the given `name` to the following destination:
+	- The symlink is added to `XCODE_SYMLINK_DIRECTORY`.
+	- The Finder alias is added to the same folder as `source`.
+	 """
 	
-	destination.unlink(missing_ok=True) # This must be done first to avoid problems with `destination.is_dir()` returning true with this symlink
-	# If we didn't set a name for the alias, we use the source's name
-	if destination.is_dir():
-		destination = destination / source.name
-	if source == destination:
-		raise AssertionError(f"The destination path for the alias ({destination}) is the same as its source (it would override it)")
+	alias_destination = source.parent / name
+	if source == alias_destination:
+		raise AssertionError(f"The destination path for the alias ({alias_destination}) is the same as its source (it would override it)")
+	alias_destination.unlink(missing_ok=True) # I don't think this is needed anymore: I think Applescript always overrides the original alias if present
 	applescript = """
 	use framework "Foundation"
 	set nil to missing value
@@ -226,12 +233,16 @@ def make_alias(source: Path, destination: Path):
 	end if
 	
 	log "Successfully created alias for " & source & " at " & destination
-	"""%(str(source), str(destination))
+	"""%(str(source), str(alias_destination))
 	subprocess.run(['osascript', '-e', applescript], check=True)
-	destination.rename(destination.with_suffix('.alias')) # We add this suffix to distinguish it for the symlink.
+	
 	# To be able to access Xcode from Terminal, we also need to keep a symlink.
 	# TODO: If `xcodes` sets  the Command Line Tools, maybe this isn't needed
-	destination.symlink_to(source)
+	symlink_destination = XCODE_SYMLINK_DIRECTORY / name
+	if source == symlink_destination:
+		raise AssertionError(f"The destination path for the symlink ({symlink_destination}) is the same as its source (it would override it)")
+	symlink_destination.unlink(missing_ok=True) # I'm not sure if this is needed anymore
+	symlink_destination.symlink_to(source)
 
 
 if __name__ == '__main__':
