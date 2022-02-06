@@ -90,6 +90,8 @@ def delete_xcode(dry_run: bool):
 	xcode_version_to_delete = oldest_xcode_version(include_releases=should_delete_release_version)
 	if xcode_version_to_delete:
 		print(f'- {xcode_version_to_delete} will be deleted.')
+		if not os.access(xcode_version_to_delete, os.R_OK | os.W_OK):
+			raise PermissionError(f"The current user doesn't have permissions to delete {xcode_version_to_delete}")
 	
 	if not dry_run:
 		shutil.rmtree(str(xcode_version_to_delete))
