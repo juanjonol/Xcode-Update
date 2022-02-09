@@ -45,6 +45,7 @@ def main():
 
 	args = parse_args()
 	verify_permissions()
+	update_xcode_list()
 	if args.interactive:
 		install_latest_xcode(dry_run=True)
 		if args.delete:
@@ -65,6 +66,12 @@ def verify_permissions():
 		xcode_directory = '/Applications'
 	if not os.access(xcode_directory, os.R_OK | os.W_OK):
 		raise PermissionError(f"The current user doesn't have permissions to install Xcode on {xcode_directory}")
+	
+	
+def update_xcode_list():
+	"""Updates the list of Xcode versions available."""
+	
+	subprocess.run(['xcodes', 'update'], check=True)
 	
 	
 def install_latest_xcode(dry_run: bool):
