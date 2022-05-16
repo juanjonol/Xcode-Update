@@ -92,6 +92,9 @@ def delete_xcode(dry_run: bool):
 
 	# Xcode release versions are only updated when the current beta (that's about to be replaced) points to a release version
 	xcode_beta_path = XCODE_SYMLINK_DIRECTORY / XCODE_BETA
+	if not xcode_beta_path.exists() and not xcode_beta_path.is_symlink():
+		print("NO BETA VERSION DETECTED: the current Xcode version won't be deleted until a beta is installed.")
+		return
 	current_beta = xcode_beta_path.resolve()
 	should_delete_release_version = is_release_version(current_beta)
 	xcode_version_to_delete = oldest_xcode_version(include_releases=should_delete_release_version)
