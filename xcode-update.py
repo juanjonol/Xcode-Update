@@ -32,6 +32,7 @@ def parse_args():
 	root_parser.add_argument('-v', '--version', action='version', version='1.0.0')
 	root_parser.add_argument('-n', '--non-interactive', action='store_false', dest='interactive', help='Installs and deletes Xcode versions without asking for permission first')
 	root_parser.add_argument('-s', '--skip-delete', action='store_false', dest='delete', help="Don't delete the oldest Xcode version")
+	root_parser.add_argument('-l', '--links-only', action='store_true', help='Just update the links to the latest release and beta versions of Xcode.')
 	return root_parser.parse_args()
 
 
@@ -47,13 +48,15 @@ def main():
 	verify_permissions()
 	update_xcode_list()
 	if args.interactive:
-		install_latest_xcode(dry_run=True)
-		if args.delete:
+		if not args.links_only:
+			install_latest_xcode(dry_run=True)
+		if args.delete and not args.links_only:
 			delete_xcode(dry_run=True)
 		update_links(dry_run=True)
 		ask_for_confirmation("Continue updating? (Y/n): ")
-	install_latest_xcode(dry_run=False)
-	if args.delete:
+	if not args.links_only:
+		install_latest_xcode(dry_run=False)
+	if args.delete and not args.links_only:
 		delete_xcode(dry_run=False)
 	update_links(dry_run=False)
 	
