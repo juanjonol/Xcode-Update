@@ -6,7 +6,7 @@ This is a wrapper around `xcodes` (https://github.com/RobotsAndPencils/xcodes).
 """
 
 import sys
-import shutil
+from shutil import which
 import argparse
 import subprocess
 from pathlib import Path
@@ -39,9 +39,9 @@ def parse_args():
 def main():
 	if not sys.platform == 'darwin':
 		raise NotImplementedError("This program only works on macOS")
-	if shutil.which("xcodes") is None:
+	if which("xcodes") is None:
 		raise AssertionError("xcodes isn't installed. You must install xcodes from https://github.com/RobotsAndPencils/xcodes")
-	if shutil.which("aria2c") is None:
+	if which("aria2c") is None:
 		print("WARNING: aria2 is not installed. This makes downloading Xcode versions significantly slower. You can install it with `brew install aria2`.")
 
 	args = parse_args()
@@ -82,9 +82,9 @@ def install_latest_xcode(dry_run: bool):
 	
 	latest_version, is_installed = latest_xcode_version()
 	if is_installed:
-		print(f'{latest_version} is already installed. Nothing to do.')
+		print(f'Xcode {latest_version} is already installed. Nothing to do.')
 		exit()
-	print(f'- Xcode version {latest_version} will be installed.')
+	print(f'- Xcode {latest_version} will be installed.')
 	
 	if not dry_run:
 		subprocess.run(['xcodes', 'install', f'{latest_version}', '--no-superuser', '--empty-trash', '--experimental-unxip'], check=True)
@@ -102,11 +102,9 @@ def delete_xcode(dry_run: bool):
 	should_delete_release_version = is_release_version(current_beta)
 	xcode_version_to_delete = oldest_xcode_version(include_releases=should_delete_release_version)
 	if xcode_version_to_delete:
-		print(f'- {xcode_version_to_delete} will be deleted.')
-		if not os.access(xcode_version_to_delete, os.R_OK | os.W_OK):
-			raise PermissionError(f"The current user doesn't have permissions to delete {xcode_version_to_delete}")
+		print(f'- Xcode {xcode_version_to_delete} will be deleted.')
 		if not dry_run:
-			shutil.rmtree(str(xcode_version_to_delete))
+			subprocess.run(['xcodes', 'uninstall', f'{xcode_version_to_delete}', '--empty-trash'], check=True)
 		
 		
 def update_links(dry_run: bool):
@@ -187,14 +185,14 @@ def is_release_version(path: Path) -> bool:
 	AssertionError(f"{path} doesn't seems to be a valid Xcode version")
 	
 	
-def oldest_xcode_version(include_releases: bool) -> Path:
-	"""Returns the path to the oldest Xcode version, to be able to delete it.
+def oldest_xcode_version(include_releases: bool) -> str:
+	"""Returns the name of the oldest Xcode version, to be able to delete it.
 	The parameter allows to only delete beta versions (to keep a release version even if it's older)."""
 	
 	installed_versions = subprocess.run(['xcodes', 'installed'], check=True, stdout=subprocess.PIPE).stdout.decode('utf-8')
 	for version in installed_versions.split("\n"):
 		if include_releases | (XCODES_BETA_MAGIC_STRING in version):
-			return Path(version.split("\t")[1])
+			return version.split("\t")[0]
 	return None # There could be no previous Xcode versions
 	
 
