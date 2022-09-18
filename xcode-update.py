@@ -214,8 +214,7 @@ def make_alias(source: Path, name: str):
 	 """
 	
 	alias_destination = source.parent / name
-	if source == alias_destination:
-		raise AssertionError(f"The destination path for the alias ({alias_destination}) is the same as its source (it would override it)")
+	alias_destination = alias_destination.with_suffix('.alias') # We add this suffix to distinguish it for the symlink.
 	alias_destination.unlink(missing_ok=True) # I don't think this is needed anymore: I think Applescript always overrides the original alias if present
 	applescript = """
 	use framework "Foundation"
