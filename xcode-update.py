@@ -105,9 +105,8 @@ def delete_xcode(dry_run: bool):
 		print(f'- {xcode_version_to_delete} will be deleted.')
 		if not os.access(xcode_version_to_delete, os.R_OK | os.W_OK):
 			raise PermissionError(f"The current user doesn't have permissions to delete {xcode_version_to_delete}")
-	
-	if not dry_run:
-		shutil.rmtree(str(xcode_version_to_delete))
+		if not dry_run:
+			shutil.rmtree(str(xcode_version_to_delete))
 		
 		
 def update_links(dry_run: bool):
