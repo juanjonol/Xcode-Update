@@ -29,7 +29,7 @@ def parse_args():
 
 	root_parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)  # Uses file's default docstring
 	# Arguments
-	root_parser.add_argument('-v', '--version', action='version', version='1.0.0')
+	root_parser.add_argument('-v', '--version', action='version', version='1.0.1')
 	root_parser.add_argument('-n', '--non-interactive', action='store_false', dest='interactive', help='Installs and deletes Xcode versions without asking for permission first')
 	root_parser.add_argument('-s', '--skip-delete', action='store_false', dest='delete', help="Don't delete the oldest Xcode version")
 	root_parser.add_argument('-l', '--links-only', action='store_true', help='Just update the links to the latest release and beta versions of Xcode.')
@@ -182,7 +182,7 @@ def is_release_version(path: Path) -> bool:
 	for version in installed_versions.split("\n"):
 		if str(path) in version:
 			return not XCODES_BETA_MAGIC_STRING in version
-	AssertionError(f"{path} doesn't seems to be a valid Xcode version")
+	raise AssertionError(f"{path} doesn't seems to be a valid Xcode version")
 	
 	
 def oldest_xcode_version(include_releases: bool) -> str:
