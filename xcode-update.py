@@ -22,14 +22,14 @@ XCODE_BETA = 'Xcode-beta.app'
 # String that Xcodes adds to a version to indicate it's already installed. Note the space at the beginning.
 XCODES_INSTALLED_MAGIC_STRING = ' (Installed)'
 # String that Xcodes adds to a version to indicate it's a Beta version.
-XCODES_BETA_MAGIC_STRING = 'Beta'
+XCODES_BETA_MAGIC_STRINGS = ['Beta', 'Release Candidate']
 
 def parse_args():
 	"""Parse the Command Line arguments and generate the Command Line help."""
 
 	root_parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)  # Uses file's default docstring
 	# Arguments
-	root_parser.add_argument('-v', '--version', action='version', version='1.0.1')
+	root_parser.add_argument('-v', '--version', action='version', version='1.0.2')
 	root_parser.add_argument('-n', '--non-interactive', action='store_false', dest='interactive', help='Installs and deletes Xcode versions without asking for permission first')
 	root_parser.add_argument('-s', '--skip-delete', action='store_false', dest='delete', help="Don't delete the oldest Xcode version")
 	root_parser.add_argument('-l', '--links-only', action='store_true', help='Just update the links to the latest release and beta versions of Xcode.')
@@ -181,7 +181,8 @@ def is_release_version(path: Path) -> bool:
 	installed_versions = subprocess.run(['xcodes', 'installed'], check=True, stdout=subprocess.PIPE).stdout.decode('utf-8')
 	for version in installed_versions.split("\n"):
 		if str(path) in version:
-			return not XCODES_BETA_MAGIC_STRING in version
+			is_beta = any(magic_string in version for magic_string in XCODES_BETA_MAGIC_STRINGS)
+			return not is_beta
 	raise AssertionError(f"{path} doesn't seems to be a valid Xcode version")
 	
 	
@@ -191,7 +192,8 @@ def oldest_xcode_version(include_releases: bool) -> str:
 	
 	installed_versions = subprocess.run(['xcodes', 'installed'], check=True, stdout=subprocess.PIPE).stdout.decode('utf-8')
 	for version in installed_versions.split("\n"):
-		if include_releases | (XCODES_BETA_MAGIC_STRING in version):
+		is_beta = any(magic_string in version for magic_string in XCODES_BETA_MAGIC_STRINGS)
+		if include_releases | is_beta:
 			return version.split("\t")[0]
 	return None # There could be no previous Xcode versions
 	
