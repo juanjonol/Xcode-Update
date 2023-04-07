@@ -29,7 +29,7 @@ def parse_args():
 
 	root_parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)  # Uses file's default docstring
 	# Arguments
-	root_parser.add_argument('-v', '--version', action='version', version='1.0.2')
+	root_parser.add_argument('-v', '--version', action='version', version='1.0.3')
 	root_parser.add_argument('-n', '--non-interactive', action='store_false', dest='interactive', help='Installs and deletes Xcode versions without asking for permission first')
 	root_parser.add_argument('-s', '--skip-delete', action='store_false', dest='delete', help="Don't delete the oldest Xcode version")
 	root_parser.add_argument('-l', '--links-only', action='store_true', help='Just update the links to the latest release and beta versions of Xcode.')
@@ -46,7 +46,6 @@ def main():
 
 	args = parse_args()
 	verify_permissions()
-	update_xcode_list()
 	if args.interactive:
 		if not args.links_only:
 			install_latest_xcode(dry_run=True)
@@ -69,12 +68,6 @@ def verify_permissions():
 		xcode_directory = '/Applications'
 	if not os.access(xcode_directory, os.R_OK | os.W_OK):
 		raise PermissionError(f"The current user doesn't have permissions to install Xcode on {xcode_directory}")
-	
-	
-def update_xcode_list():
-	"""Updates the list of Xcode versions available."""
-	
-	subprocess.run(['xcodes', 'update'], check=True)
 	
 	
 def install_latest_xcode(dry_run: bool):
