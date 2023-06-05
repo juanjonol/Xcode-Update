@@ -29,7 +29,7 @@ def parse_args():
 
 	root_parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)  # Uses file's default docstring
 	# Arguments
-	root_parser.add_argument('-v', '--version', action='version', version='1.0.3')
+	root_parser.add_argument('-v', '--version', action='version', version='1.0.4')
 	root_parser.add_argument('-n', '--non-interactive', action='store_false', dest='interactive', help='Installs and deletes Xcode versions without asking for permission first')
 	root_parser.add_argument('-s', '--skip-delete', action='store_false', dest='delete', help="Don't delete the oldest Xcode version")
 	root_parser.add_argument('-l', '--links-only', action='store_true', help='Just update the links to the latest release and beta versions of Xcode.')
@@ -124,11 +124,15 @@ def update_links(dry_run: bool):
 	# - If no current_beta exists, to the same version as XCODE_BETA (the only Xcode version detected).
 	if xcode_release_path.exists() or xcode_release_path.is_symlink():
 		current_release = xcode_release_path.resolve()
+		if not current_beta or (not current_beta.exists() and not current_beta.is_symlink()):
+			# If the current beta no longer exists, it means that it was a beta and it was replaced by the new one,
+			# so we know we don't need to update the release version.
+			return
 		if is_release_version(current_beta):
 			print(f'- {xcode_release_path} will stop linking to {current_release} and start pointing to {current_beta}.')
 			if not dry_run:
 				make_alias(current_beta, XCODE_RELEASE)
-	elif current_beta:
+	elif current_beta and (current_beta.exists() or current_beta.is_symlink()):
 		print(f'- NO RELEASE VERSION DETECTED: {xcode_release_path} will be created pointing to {current_beta}.')
 		if not dry_run:
 			make_alias(current_beta, XCODE_RELEASE)
@@ -169,14 +173,12 @@ def latest_xcode_version() -> (str, bool):
 def is_release_version(path: Path) -> bool:
 	"""Verifies if the supplied Xcode version is a Release version"""
 	
-	if path is None:
-		return False
 	installed_versions = subprocess.run(['xcodes', 'installed'], check=True, stdout=subprocess.PIPE).stdout.decode('utf-8')
 	for version in installed_versions.split("\n"):
 		if str(path) in version:
 			is_beta = any(magic_string in version for magic_string in XCODES_BETA_MAGIC_STRINGS)
 			return not is_beta
-	raise AssertionError(f"{path} doesn't seems to be a valid Xcode version")
+	raise AssertionError(f"{path} doesn't seem to be a valid Xcode version")
 	
 	
 def oldest_xcode_version(include_releases: bool) -> str:
